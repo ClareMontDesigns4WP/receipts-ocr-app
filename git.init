@@ -1,0 +1,7 @@
+git config --global user.email "info@cmd4wp.co.za"
+git config --global user.name "Clare Mont Designs"
+git init
+git add .
+git commit -m "Initial release"
+git remote add origin https://github.com/ClareMontDesigns4WP/receipts-ocr-app.git
+git push -u origin main
