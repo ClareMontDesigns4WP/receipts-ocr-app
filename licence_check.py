@@ -23,12 +23,11 @@ _SALT = "PurpleCow@OCR#2024!Receipts$Tool"
 
 # ── Licence file location ────────────────────────────────────────────────────
 def _licence_path():
-    """Store licence next to the exe / script."""
-    if getattr(sys, "frozen", False):
-        base = os.path.dirname(sys.executable)
-    else:
-        base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, "licence.key")
+    """Store licence in AppData folder (writable location, not Program Files)."""
+    app_data_dir = os.path.join(os.getenv('APPDATA'), 'Receipts_OCR_Tool')
+    if not os.path.exists(app_data_dir):
+        os.makedirs(app_data_dir)
+    return os.path.join(app_data_dir, 'licence.key')
 
 
 # ── Machine fingerprint ──────────────────────────────────────────────────────
