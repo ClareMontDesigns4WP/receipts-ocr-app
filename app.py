@@ -35,7 +35,11 @@ except ImportError:
     HAS_LICENCE = False
 
 EXCEL_FILE = "Processed_Vendor_Data.xlsx"
-DATABASE_FILE = "doc_data.db"
+# Database in AppData folder for proper permissions in Program Files
+_APP_DATA_DIR = os.path.join(os.getenv('APPDATA'), 'Receipts_OCR_Tool')
+if not os.path.exists(_APP_DATA_DIR):
+    os.makedirs(_APP_DATA_DIR)
+DATABASE_FILE = os.path.join(_APP_DATA_DIR, 'doc_data.db')
 BACKUP_DIR = "backups"
 CONFIG_FILE = "app_config.json"
 
@@ -115,7 +119,13 @@ class AccountingScannerApp:
         win = tk.Toplevel(self.root)
         win.title("Activate Receipts OCR Tool")
         win.resizable(False, False)
-        win.protocol("WM_DELETE_WINDOW", lambda: self.root.destroy())
+        
+        # Graceful close handler - exit app if user closes without activating
+        def on_close():
+            win.destroy()
+            self.root.quit()
+        
+        win.protocol("WM_DELETE_WINDOW", on_close)
 
         # Centre on screen
         win.update_idletasks()
