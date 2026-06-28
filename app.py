@@ -204,15 +204,17 @@ class AccountingScannerApp:
                 return
             
             try:
-                messagebox.showinfo("Activation Debug", f"Step 1: Saving licence\nCustomer: {customer}\nKey: {key[:20]}...")
+                status_lbl.config(text="Saving licence...", fg="blue")
+                win.update()  # Refresh display
                 
                 # Save licence
                 save_licence(key, customer)
-                messagebox.showinfo("Activation Debug", "Step 2: Licence saved. Now validating...")
+                
+                status_lbl.config(text="Validating...", fg="blue")
+                win.update()  # Refresh display
                 
                 # Validate
                 ok, msg = validate_key(None)
-                messagebox.showinfo("Activation Debug", f"Step 3: Validation result\nOK: {ok}\nMsg: {msg}")
                 
                 if ok:
                     status_lbl.config(text=f"✓ Activated for {msg}!", fg="green")
@@ -229,7 +231,6 @@ class AccountingScannerApp:
                     status_lbl.config(
                         text="Invalid key. Check your name and key match exactly.", fg="red")
             except Exception as e:
-                messagebox.showerror("Activation Error", f"Error occurred:\n{str(e)}\n\nType: {type(e).__name__}")
                 status_lbl.config(text=f"Error: {str(e)}", fg="red")
 
         tk.Button(win, text="Activate", command=try_activate,
