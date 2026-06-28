@@ -202,23 +202,35 @@ class AccountingScannerApp:
             if not customer or not key:
                 status_lbl.config(text="Please enter both your name and licence key.")
                 return
-            # Temporarily save and validate
-            save_licence(key, customer)
-            ok, msg = validate_key(None)
-            if ok:
-                status_lbl.config(text=f"✓ Activated for {msg}!", fg="green")
-                win.after(1200, win.destroy)
-            else:
-                # Remove invalid licence file
-                try:
-                    from licence_check import _licence_path
-                    lp = _licence_path()
-                    if os.path.exists(lp):
-                        os.remove(lp)
-                except Exception:
-                    pass
-                status_lbl.config(
-                    text="Invalid key. Check your name and key match exactly.", fg="red")
+            
+            try:
+                messagebox.showinfo("Activation Debug", f"Step 1: Saving licence\nCustomer: {customer}\nKey: {key[:20]}...")
+                
+                # Save licence
+                save_licence(key, customer)
+                messagebox.showinfo("Activation Debug", "Step 2: Licence saved. Now validating...")
+                
+                # Validate
+                ok, msg = validate_key(None)
+                messagebox.showinfo("Activation Debug", f"Step 3: Validation result\nOK: {ok}\nMsg: {msg}")
+                
+                if ok:
+                    status_lbl.config(text=f"✓ Activated for {msg}!", fg="green")
+                    win.after(1200, win.destroy)
+                else:
+                    # Remove invalid licence file
+                    try:
+                        from licence_check import _licence_path
+                        lp = _licence_path()
+                        if os.path.exists(lp):
+                            os.remove(lp)
+                    except Exception:
+                        pass
+                    status_lbl.config(
+                        text="Invalid key. Check your name and key match exactly.", fg="red")
+            except Exception as e:
+                messagebox.showerror("Activation Error", f"Error occurred:\n{str(e)}\n\nType: {type(e).__name__}")
+                status_lbl.config(text=f"Error: {str(e)}", fg="red")
 
         tk.Button(win, text="Activate", command=try_activate,
                   bg="#6B2FA0", fg="white", font=("Arial", 10, "bold"),
