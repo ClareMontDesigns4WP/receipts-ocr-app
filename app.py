@@ -49,7 +49,7 @@ FIELD_KEYS = ("vendor", "vendor_num", "date", "vat", "phone", "cell",
 class AccountingScannerApp:
     def __init__(self, root):
         self.root = root
-        root.title("Receipts OCR — Document Processing")
+        root.title("Receipts OCR Tool — Purple Cow Accounting")
         root.geometry("1800x1000")
         root.withdraw()  # Hide main window until licence + TOS done
         
@@ -133,21 +133,23 @@ class AccountingScannerApp:
         win.grab_set()
         win.focus_force()
 
-        # Header
-        tk.Label(win, text="Receipts OCR Tool", font=("Arial", 14, "bold"),
-                 fg="#6A1B9A").pack(pady=(20, 2))
-        tk.Label(win, text="by Purple Cow Accounting",
-                 font=("Arial", 9), fg="#888").pack()
+        # Header with branding
+        header_frame = tk.Frame(win, bg="#6B2FA0", height=80)
+        header_frame.pack(fill=tk.X, side=tk.TOP)
+        header_frame.pack_propagate(False)
+        
+        tk.Label(header_frame, text="Receipts OCR Tool", font=("Arial", 16, "bold"),
+                 fg="white", bg="#6B2FA0").pack(pady=(10, 2))
+        tk.Label(header_frame, text="by Purple Cow Accounting",
+                 font=("Arial", 10), fg="#D4AF37", bg="#6B2FA0").pack(pady=(0, 10))
 
-        tk.Frame(win, height=1, bg="#ddd").pack(fill=tk.X, padx=20, pady=12)
-
-        tk.Label(win, text="This software requires a licence to run.",
-                 font=("Arial", 10)).pack()
+        tk.Label(win, text="Activate your licence",
+                 font=("Arial", 11, "bold"), fg="#2D3142").pack(pady=(20, 2))
         tk.Label(win,
-                 text="Contact Purple Cow Accounting to purchase:",
-                 font=("Arial", 9), fg="#555").pack(pady=(6, 2))
-        tk.Label(win, text="clare@purplecowaccounting.co.za",
-                 font=("Arial", 9, "bold"), fg="#6A1B9A").pack()
+                 text="Purchase or activate your licence from:",
+                 font=("Arial", 10), fg="#555").pack(pady=(6, 2))
+        tk.Label(win, text="OCR@purplecow.site  |  +27 608 888 812",
+                 font=("Arial", 10, "bold"), fg="#6B2FA0").pack()
 
         tk.Frame(win, height=1, bg="#ddd").pack(fill=tk.X, padx=20, pady=12)
 
@@ -209,7 +211,7 @@ class AccountingScannerApp:
                     text="Invalid key. Check your name and key match exactly.", fg="red")
 
         tk.Button(win, text="Activate", command=try_activate,
-                  bg="#6A1B9A", fg="white", font=("Arial", 10, "bold"),
+                  bg="#6B2FA0", fg="white", font=("Arial", 10, "bold"),
                   width=20).pack(pady=(4, 0))
 
         self.root.wait_window(win)
@@ -292,16 +294,29 @@ Verify all data before use in financial records.""")
             messagebox.showerror("DB Error", str(e))
 
     def blank_doc(self):
-        return {"orientation": "South",
-                "fields": {k: "" for k in FIELD_KEYS},
-                "boxes": {k: None for k in FIELD_KEYS + ("table",)},
-                "lines": [{"code": "", "desc": "", "qty": "", "unit": "", "total": "", "vat_amount": ""}]}
+        return {"orientation": "South", "fields": {"vendor": "", "vendor_num": "", "date": "", "vat": "",
+                                    "phone": "", "cell": "", "account_num": "", "ref": "",
+                                    "address": "", "po_box": "", "email": "", "contact": ""},
+                "boxes": {k: False for k in ["vendor", "vendor_num", "date", "vat", "phone", "cell",
+                                             "account_num", "ref", "address", "po_box", "email", "contact"]},
+                "lines": []}
 
     def setup_ui(self):
         # LEFT PANEL
-        self.left = tk.Frame(self.root, width=700, bg="#f5f5f5")
+        # MENU BAR
+        menubar = tk.Menu(self.root)
+        self.root.config(menu=menubar)
+        
+        help_menu = tk.Menu(menubar, tearoff=0)
+        menubar.add_cascade(label="Help", menu=help_menu)
+        help_menu.add_command(label="About", command=self.show_about)
+        help_menu.add_command(label="Licence Status", command=self.show_licence_status)
+        help_menu.add_separator()
+        help_menu.add_command(label="Check Licence", command=self.check_licence_menu)
+        
+        self.left = tk.Frame(self.root, width=500, bg="#f5f5f5")
         self.left.pack(side=tk.LEFT, fill=tk.BOTH, padx=6, pady=6)
-        self.left.pack_propagate(False)
+        self.left.pack_propagate(False)  # Keep at 500px width
         
         # RIGHT PANEL
         self.right = tk.Frame(self.root, bg="#fff")
@@ -311,9 +326,9 @@ Verify all data before use in financial records.""")
         topf = tk.Frame(self.left, bg="#f5f5f5")
         topf.pack(fill=tk.X, pady=4)
         tk.Button(topf, text="📁 Open PDF/Image", command=self.load_file,
-                  bg="#4CAF50", fg="white", font=("Arial", 9, "bold")).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+                  bg="#D4AF37", fg="#2D3142", font=("Arial", 9, "bold")).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
         tk.Button(topf, text="🔄 Reset", command=self.reset,
-                  bg="#EF5350", fg="white", font=("Arial", 9, "bold")).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+                  bg="#6B2FA0", fg="white", font=("Arial", 9, "bold")).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
 
         # PAGE NAV
         pf = tk.Frame(self.left, bg="#f5f5f5")
@@ -324,8 +339,8 @@ Verify all data before use in financial records.""")
         tk.Button(pf, text="Page ▶", command=self.next_page, width=7).pack(side=tk.LEFT, padx=2)
 
         # ZOOM
-        zf = tk.LabelFrame(self.left, text="Zoom", bg="#f5f5f5", font=("Arial", 9, "bold"))
-        zf.pack(fill=tk.X, pady=3)
+        zf = tk.LabelFrame(self.left, text="Zoom", bg="#f5f5f5", font=("Arial", 8))
+        zf.pack(fill=tk.X, pady=2)
         zb = tk.Frame(zf, bg="#f5f5f5")
         zb.pack(pady=3)
         tk.Button(zb, text="➕", width=4, command=lambda: self.adjust_zoom(0.2), font=("Arial", 10)).pack(side=tk.LEFT, padx=2)
@@ -334,17 +349,19 @@ Verify all data before use in financial records.""")
 
         # TABS
         nb = ttk.Notebook(self.left)
-        nb.pack(fill=tk.X, pady=3)
+        nb.pack(fill=tk.X, pady=2)
         t1 = tk.Frame(nb)
         t2 = tk.Frame(nb)
         nb.add(t1, text="Single")
         nb.add(t2, text="Multiple")
-        tk.Label(t1, text="Default: 1 doc per page", font=("Arial", 9)).pack(pady=4)
-        tk.Label(t2, text="Docs per page:", font=("Arial", 9)).pack(anchor=tk.W, pady=2, padx=4)
-        self.count_entry = tk.Entry(t2, width=6, font=("Arial", 9))
+        t1.config(bg="#6B2FA0")
+        t2.config(bg="#6B2FA0")
+        tk.Label(t1, text="Default: 1 doc per page", font=("Arial", 9), bg="#6B2FA0", fg="white").pack(pady=4)
+        tk.Label(t2, text="Docs per page:", font=("Arial", 9), bg="#6B2FA0", fg="white").pack(anchor=tk.W, pady=2, padx=4)
+        self.count_entry = tk.Entry(t2, width=6, font=("Arial", 9), bg="white", fg="#2D3142")
         self.count_entry.insert(0, "2")
         self.count_entry.pack(anchor=tk.W, padx=4)
-        tk.Button(t2, text="Initialize Slots", command=self.build_slots, bg="#9C27B0", fg="white", font=("Arial", 9)).pack(fill=tk.X, pady=2, padx=2)
+        tk.Button(t2, text="Initialize Slots", command=self.build_slots, bg="#6B2FA0", fg="white", font=("Arial", 9)).pack(fill=tk.X, pady=2, padx=2)
 
         # DOC LABEL
         self.doc_lbl = tk.Label(self.left, text="Doc [1/1]", font=("Arial", 10, "bold"), fg="#E91E63", bg="#f5f5f5")
@@ -368,9 +385,9 @@ Verify all data before use in financial records.""")
         # BOTTOM BUTTONS
         exp_f = tk.Frame(self.left, bg="#f5f5f5")
         exp_f.pack(fill=tk.X, side=tk.BOTTOM, pady=3)
-        tk.Button(exp_f, text="💾 Create Backup", command=self.backup, bg="#FF9800", fg="white", font=("Arial", 9, "bold")).pack(fill=tk.X, pady=2)
+        tk.Button(exp_f, text="💾 Create Backup", command=self.backup, bg="#6B2FA0", fg="white", font=("Arial", 9, "bold")).pack(fill=tk.X, pady=2)
         tk.Button(exp_f, text="⚙️ Export to Excel", command=self.export_menu,
-                  bg="#008CBA", fg="white", font=("Arial", 10, "bold")).pack(fill=tk.X, pady=2)
+                  bg="#D4AF37", fg="#2D3142", font=("Arial", 10, "bold")).pack(fill=tk.X, pady=2)
 
         # CANVAS
         self.canvas_title = tk.Label(self.right, text="Canvas — Select regions by dragging", font=("Arial", 10, "bold"))
@@ -424,17 +441,17 @@ Verify all data before use in financial records.""")
         self.fbtns = {}
         field_list = [("Vendor Name", "vendor"), ("Vendor #", "vendor_num"), ("Date", "date"),
                       ("VAT Number", "vat"), ("Telephone", "phone"), ("Cell Phone", "cell"),
-                      ("Account #", "account_num"), ("Reference", "ref"), ("Address", "address"),
-                      ("Email", "email"), ("Contact", "contact")]
+                      ("Account #", "account_num"), ("Reference", "ref"), ("Physical Address", "address"),
+                      ("P.O. Box", "po_box"), ("Email", "email"), ("Contact", "contact")]
         for label, key in field_list:
             r = tk.Frame(ff, bg="#f5f5f5")
             r.pack(fill=tk.X, pady=3, padx=4)
             tk.Label(r, text=label, width=12, anchor=tk.W, font=("Arial", 9)).pack(side=tk.LEFT)
-            if key == "address":
-                w = tk.Text(r, height=3, width=20, font=("Arial", 9), wrap=tk.WORD)
+            if key in ["address", "po_box"]:
+                w = tk.Text(r, height=3, width=40, font=("Arial", 9), wrap=tk.WORD)
                 w.insert("1.0", st["fields"][key])
             else:
-                w = tk.Entry(r, width=20, font=("Arial", 9))
+                w = tk.Entry(r, width=35, font=("Arial", 9))
                 w.insert(0, st["fields"][key])
             w.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
             self.entries[key] = w
@@ -464,6 +481,10 @@ Verify all data before use in financial records.""")
         for row in st.get("lines", []):
             vals = tuple(row.get(c, "") for c in GRID_COLS)
             self.tree.insert("", tk.END, values=vals)
+        
+        # ADD FIRST BLANK ROW IF GRID IS EMPTY
+        if not self.tree.get_children():
+            self.tree.insert("", tk.END, values=tuple("" for _ in GRID_COLS))
 
         # TOTALS
         tot_f = tk.Frame(tf, bg="#e8f5e9", relief=tk.SUNKEN, borderwidth=2)
@@ -483,6 +504,48 @@ Verify all data before use in financial records.""")
         nf.pack(fill=tk.X, padx=4, pady=4)
         tk.Button(nf, text="◀ Previous Document", command=lambda: self.shift("prev"), font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
         tk.Button(nf, text="Next Document ▶", command=lambda: self.shift("next"), font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        self._setup_field_navigation()  # Enable keyboard navigation
+
+
+    def _setup_field_navigation(self):
+        """Bind Enter key to move between fields smoothly."""
+        field_order = ["vendor", "vendor_num", "date", "vat", "phone", "cell", 
+                       "account_num", "ref", "address", "po_box", "email", "contact"]
+        
+        def make_next_handler(current_key):
+            def on_enter(event):
+                current_idx = field_order.index(current_key)
+                next_idx = (current_idx + 1) % len(field_order)  # Loop to first field
+                next_key = field_order[next_idx]
+                if next_key in self.entries:
+                    self.entries[next_key].focus()
+                return "break"  # Prevent default Enter behavior
+            return on_enter
+        
+        # Bind Enter to all Entry fields
+        for key in field_order:
+            if key in self.entries:
+                widget = self.entries[key]
+                # For Entry widgets, bind Return
+                if isinstance(widget, tk.Entry):
+                    widget.bind("<Return>", make_next_handler(key))
+                    widget.bind("<Tab>", lambda e, k=key: self._focus_next_field(k))
+                # For Text widget (address), also bind Return to move next
+                elif isinstance(widget, tk.Text):
+                    widget.bind("<Control-Return>", make_next_handler(key))
+                    # Ctrl+Return moves to next field; regular Return adds newline
+    
+    def _focus_next_field(self, current_key):
+        """Focus the next field when Tab is pressed."""
+        field_order = ["vendor", "vendor_num", "date", "vat", "phone", "cell", 
+                       "account_num", "ref", "address", "po_box", "email", "contact"]
+        current_idx = field_order.index(current_key)
+        next_idx = (current_idx + 1) % len(field_order)
+        next_key = field_order[next_idx]
+        if next_key in self.entries:
+            self.entries[next_key].focus()
+        return "break"
+
 
     def tree_double_click(self, event):
         """Handle double-click on tree cell"""
@@ -512,6 +575,7 @@ Verify all data before use in financial records.""")
         entry.pack(pady=5)
         entry.focus_set()
         entry.select_range(0, tk.END)
+        entry.bind("<Return>", lambda e: save_and_move_right())
         
         btn_frame = tk.Frame(popup)
         btn_frame.pack(pady=10)
@@ -521,6 +585,16 @@ Verify all data before use in financial records.""")
             self.update_totals()
             self.save_form()
             popup.destroy()
+        
+        def save_and_move_right():
+            """Save current cell and move to next column (right)."""
+            save_value()
+            # Move to next column
+            col_idx = GRID_COLS.index(col_key)
+            next_col_idx = (col_idx + 1) % len(GRID_COLS)  # Loop back to first
+            next_col = GRID_COLS[next_col_idx]
+            # Open the next cell for editing
+            self.root.after(100, lambda: self._edit_tree_cell(item, next_col))
         
         def ocr_value():
             popup.destroy()
@@ -822,9 +896,65 @@ Verify all data before use in financial records.""")
             return
         st = self.document_pipeline[self.current_doc_index]
         st["orientation"] = self.orient_var.get()
-        for k in FIELD_KEYS:
-            st["fields"][k] = self.field_get(k)
+        field_list = ["vendor", "vendor_num", "date", "vat", "phone", "cell", 
+                      "account_num", "ref", "address", "po_box", "email", "contact"]
+        for k in field_list:
+            if k in self.entries:
+                st["fields"][k] = self.field_get(k)
         st["lines"] = [dict(zip(GRID_COLS, self.tree.item(i, "values"))) for i in self.tree.get_children()]
+
+
+    def _edit_tree_cell(self, item, col_key):
+        """Helper method to programmatically edit a tree cell."""
+        if item not in self.tree.get_children():
+            return
+        col_idx = GRID_COLS.index(col_key) + 1
+        current_value = self.tree.set(item, col_key)
+        
+        # Create popup editor
+        popup = tk.Toplevel(self.root)
+        popup.title(f"Edit {GRID_HEAD[col_key]}")
+        popup.geometry("400x150")
+        popup.grab_set()
+        
+        tk.Label(popup, text=f"Enter value for {GRID_HEAD[col_key]}:", font=("Arial", 9)).pack(pady=10)
+        
+        entry = tk.Entry(popup, width=40, font=("Arial", 10))
+        entry.insert(0, current_value)
+        entry.pack(pady=5)
+        entry.focus_set()
+        entry.select_range(0, tk.END)
+        
+        btn_frame = tk.Frame(popup)
+        btn_frame.pack(pady=10)
+        
+        def save_value():
+            self.tree.set(item, col_key, entry.get())
+            self.update_totals()
+            self.save_form()
+            popup.destroy()
+        
+        def save_and_move_right():
+            """Save current cell and move to next column (right)."""
+            save_value()
+            # Move to next column
+            col_idx = GRID_COLS.index(col_key)
+            next_col_idx = (col_idx + 1) % len(GRID_COLS)
+            next_col = GRID_COLS[next_col_idx]
+            self.root.after(100, lambda: self._edit_tree_cell(item, next_col))
+        
+        entry.bind("<Return>", lambda e: save_and_move_right())
+        
+        tk.Button(btn_frame, text="Save", command=save_value, bg="#4CAF50", fg="white", width=10).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="OCR 🎯", command=lambda: self._ocr_from_popup(item, col_key, entry, popup), bg="#2196F3", fg="white", width=10).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="Cancel", command=popup.destroy, bg="#f44336", fg="white", width=10).pack(side=tk.LEFT, padx=5)
+    
+    def _ocr_from_popup(self, item, col_key, entry, popup):
+        """Handle OCR from grid popup."""
+        popup.destroy()
+        self.active_targeting_field = ("grid_ocr", item, col_key, entry)
+        self.canvas_title.config(text=f">>> Draw box for [{col_key}] - Release to OCR <<<")
+
 
     def export_menu(self):
         """Ask user whether to export current page or all pages, then export."""
@@ -917,7 +1047,7 @@ Verify all data before use in financial records.""")
                         "Vendor Name": f["vendor"], "Vendor#": f["vendor_num"],
                         "Account#": f["account_num"], "VAT#": f["vat"],
                         "Email": f["email"], "Contact": f["contact"],
-                        "Date": f["date"], "Address": f["address"],
+                        "Date": f["date"], "Address": f["address"], "PO Box": f["po_box"],
                         "Telephone": f["phone"], "Cell": f["cell"],
                         "DocRef": f["ref"], "Code": ln.get("code", ""),
                         "Description": ln.get("desc", ""), "Qty": ln.get("qty", ""),
@@ -992,6 +1122,230 @@ Verify all data before use in financial records.""")
         except Exception as e:
             messagebox.showerror("Export Error", str(e))
 
+
+
+
+    def show_licence_status(self):
+        """Display current licence status and information."""
+        if not HAS_LICENCE:
+            messagebox.showinfo("Licence Status", "Licence system not available (dev mode)")
+            return
+        
+        status_window = tk.Toplevel(self.root)
+        status_window.title("Licence Status")
+        status_window.geometry("450x350")
+        status_window.resizable(False, False)
+        
+        # Center window
+        status_window.update_idletasks()
+        w, h = 450, 350
+        sw = status_window.winfo_screenwidth()
+        sh = status_window.winfo_screenheight()
+        x = (sw - w) // 2
+        y = (sh - h) // 2
+        status_window.geometry(f"{w}x{h}+{x}+{y}")
+        
+        # Header
+        header = tk.Frame(status_window, bg="#6B2FA0", height=60)
+        header.pack(fill=tk.X, side=tk.TOP)
+        header.pack_propagate(False)
+        
+        tk.Label(header, text="Licence Information", font=("Arial", 14, "bold"),
+                 fg="white", bg="#6B2FA0").pack(pady=(12, 8))
+        
+        # Content
+        content = tk.Frame(status_window)
+        content.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+        
+        # Check if activated
+        if is_activated():
+            status_label = tk.Label(content, text="✓ ACTIVATED", font=("Arial", 12, "bold"),
+                                   fg="#4CAF50")
+            status_label.pack(pady=10)
+            
+            try:
+                from licence_check import _licence_path
+                import json
+                with open(_licence_path(), 'r') as f:
+                    lic_data = json.load(f)
+                customer = lic_data.get('customer', 'Unknown')
+                key = lic_data.get('key', '')
+                
+                tk.Label(content, text="Customer:", font=("Arial", 10, "bold"),
+                        fg="#2D3142").pack(anchor=tk.W, pady=(10, 2))
+                tk.Label(content, text=customer, font=("Arial", 10),
+                        fg="#666").pack(anchor=tk.W, pady=(0, 10))
+                
+                tk.Label(content, text="Licence Key:", font=("Arial", 10, "bold"),
+                        fg="#2D3142").pack(anchor=tk.W)
+                key_frame = tk.Frame(content)
+                key_frame.pack(anchor=tk.W, fill=tk.X, pady=(2, 10))
+                tk.Label(key_frame, text=key, font=("Courier", 9),
+                        fg="#6B2FA0", bg="#f5f5f5").pack(fill=tk.X, padx=8, pady=4)
+                
+                tk.Label(content, text="Validity: 12 months from activation",
+                        font=("Arial", 9), fg="#666").pack(anchor=tk.W, pady=5)
+                
+            except Exception as e:
+                tk.Label(content, text=f"Error reading licence: {str(e)}",
+                        font=("Arial", 9), fg="#f44336").pack()
+        else:
+            status_label = tk.Label(content, text="✗ NOT ACTIVATED", font=("Arial", 12, "bold"),
+                                   fg="#f44336")
+            status_label.pack(pady=10)
+            
+            tk.Label(content, text="This copy of the Receipts OCR Tool is not activated.",
+                    font=("Arial", 10), fg="#666", wraplength=350).pack(pady=10)
+            tk.Label(content, text="Contact Purple Cow Accounting to obtain a licence key.",
+                    font=("Arial", 9), fg="#666").pack()
+            tk.Label(content, text="OCR@purplecow.site | +27 608 888 812",
+                    font=("Arial", 9, "bold"), fg="#6B2FA0").pack(pady=(10, 0))
+        
+        tk.Button(content, text="Close", command=status_window.destroy,
+                 bg="#6B2FA0", fg="white", font=("Arial", 9)).pack(pady=(20, 0))
+
+    def check_licence_menu(self):
+        """Safe licence check from menu - shows status with option to change key."""
+        if not HAS_LICENCE:
+            messagebox.showinfo("Check Licence", "Licence system not available (dev mode)")
+            return
+        
+        if not is_activated():
+            # Not activated - show activation screen
+            self._show_activation()
+            return
+        
+        # Already activated - show status with option to change
+        check_window = tk.Toplevel(self.root)
+        check_window.title("Licence Management")
+        check_window.geometry("450x300")
+        check_window.resizable(False, False)
+        
+        # Center window
+        check_window.update_idletasks()
+        w, h = 450, 300
+        sw = check_window.winfo_screenwidth()
+        sh = check_window.winfo_screenheight()
+        x = (sw - w) // 2
+        y = (sh - h) // 2
+        check_window.geometry(f"{w}x{h}+{x}+{y}")
+        
+        # Header
+        header = tk.Frame(check_window, bg="#6B2FA0", height=60)
+        header.pack(fill=tk.X, side=tk.TOP)
+        header.pack_propagate(False)
+        
+        tk.Label(header, text="Current Licence", font=("Arial", 14, "bold"),
+                 fg="white", bg="#6B2FA0").pack(pady=(12, 8))
+        
+        # Content
+        content = tk.Frame(check_window)
+        content.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+        
+        try:
+            from licence_check import _licence_path
+            import json
+            with open(_licence_path(), 'r') as f:
+                lic_data = json.load(f)
+            customer = lic_data.get('customer', 'Unknown')
+            
+            tk.Label(content, text="✓ Activated", font=("Arial", 12, "bold"),
+                    fg="#4CAF50").pack(pady=10)
+            tk.Label(content, text=f"Customer: {customer}", font=("Arial", 10),
+                    fg="#2D3142").pack(pady=5)
+            tk.Label(content, text="Machine ID: " + get_machine_id()[:16] + "...",
+                    font=("Arial", 9), fg="#666").pack(pady=5)
+            tk.Label(content, text="Validity: 12 months from activation",
+                    font=("Arial", 9), fg="#666").pack(pady=10)
+        except Exception as e:
+            tk.Label(content, text="Licence Info", font=("Arial", 10, "bold"),
+                    fg="#2D3142").pack(pady=5)
+            tk.Label(content, text="✓ Activated and running",
+                    font=("Arial", 10), fg="#4CAF50").pack(pady=10)
+        
+        # Buttons
+        btn_frame = tk.Frame(content)
+        btn_frame.pack(pady=15)
+        
+        tk.Button(btn_frame, text="Close", command=check_window.destroy,
+                 bg="#6B2FA0", fg="white", font=("Arial", 9), width=15).pack(pady=5)
+        tk.Button(btn_frame, text="Enter Different Key", command=lambda: self._enter_different_key(check_window),
+                 bg="#D4AF37", fg="#2D3142", font=("Arial", 9), width=15).pack(pady=5)
+
+    def _enter_different_key(self, parent_window):
+        """Open activation screen to enter a new licence key."""
+        parent_window.destroy()
+        self._show_activation()
+
+    def show_about(self):
+        """Show About dialog with branding and AI training services."""
+        about_window = tk.Toplevel(self.root)
+        about_window.title("About Receipts OCR Tool")
+        about_window.geometry("450x450")
+        about_window.resizable(False, False)
+        
+        # Center window
+        about_window.update_idletasks()
+        w, h = 450, 450
+        sw = about_window.winfo_screenwidth()
+        sh = about_window.winfo_screenheight()
+        x = (sw - w) // 2
+        y = (sh - h) // 2
+        about_window.geometry(f"{w}x{h}+{x}+{y}")
+        
+        # Header with branding
+        header = tk.Frame(about_window, bg="#6B2FA0", height=60)
+        header.pack(fill=tk.X, side=tk.TOP)
+        header.pack_propagate(False)
+        
+        tk.Label(header, text="Receipts OCR Tool", font=("Arial", 14, "bold"),
+                 fg="white", bg="#6B2FA0").pack(pady=(8, 2))
+        tk.Label(header, text="v1.0 — by Purple Cow Accounting",
+                 font=("Arial", 9), fg="#D4AF37", bg="#6B2FA0").pack(pady=(0, 8))
+        
+        # Content
+        content = tk.Frame(about_window)
+        content.pack(fill=tk.BOTH, expand=True, padx=20, pady=15)
+        
+        tk.Label(content, text="Fast OCR processing for receipts & invoices",
+                 font=("Arial", 10), fg="#555", wraplength=350).pack(pady=5)
+        
+        # Divider
+        tk.Frame(content, height=1, bg="#ddd").pack(fill=tk.X, pady=10)
+        
+        # AI Training Services section
+        tk.Label(content, text="AI Evaluation & Training", font=("Arial", 11, "bold"),
+                 fg="#6B2FA0").pack(anchor=tk.W)
+        tk.Label(content, text="We help your business implement AI automation and agentic workflows.",
+                 font=("Arial", 9), fg="#666", wraplength=350, justify=tk.LEFT).pack(anchor=tk.W, pady=(3, 8))
+        tk.Label(content, text="Services include:",
+                 font=("Arial", 9, "bold"), fg="#2D3142").pack(anchor=tk.W)
+        
+        services = [
+            "• AI Integration Training & Setup",
+            "• Workflow Automation Consulting",
+            "• Custom Agentic Solutions"
+        ]
+        for service in services:
+            tk.Label(content, text=service, font=("Arial", 9), fg="#555",
+                    justify=tk.LEFT).pack(anchor=tk.W, pady=1)
+        
+        # Divider
+        tk.Frame(content, height=1, bg="#ddd").pack(fill=tk.X, pady=10)
+        
+        # Contact
+        tk.Label(content, text="Contact & Support", font=("Arial", 11, "bold"),
+                 fg="#6B2FA0").pack(anchor=tk.W)
+        tk.Label(content, text="Email: OCR@purplecow.site",
+                 font=("Arial", 9, "bold"), fg="#6B2FA0").pack(anchor=tk.W, pady=2)
+        tk.Label(content, text="Phone: +27 608 888 812",
+                 font=("Arial", 9, "bold"), fg="#6B2FA0").pack(anchor=tk.W, pady=2)
+        tk.Label(content, text="Address: 40 Claremont Road, Mbombela",
+                 font=("Arial", 8), fg="#999").pack(anchor=tk.W, pady=2)
+        
+        # Close button
+        tk.Button(about_window, text="Close", command=about_window.destroy,
+                 bg="#6B2FA0", fg="white", font=("Arial", 9)).pack(pady=(10, 0))
 
 if __name__ == "__main__":
     root = tk.Tk()
