@@ -284,6 +284,7 @@ Verify all data before use in financial records.""")
                 json.dump({"tos_accepted": True}, f)
             tos.destroy()
         tk.Button(tos, text="I Agree", command=accept, bg="#4CAF50", fg="white", width=20).pack(pady=10)
+        tos.wait_window()
 
     def vendor_lookup(self, name):
         if not self.db or not name.strip():
