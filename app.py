@@ -3,6 +3,7 @@ import re
 import sqlite3
 import json
 import shutil
+import sys
 from datetime import datetime
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
@@ -29,7 +30,7 @@ except ImportError:
     HAS_CV = False
 
 try:
-    from licence_check import get_machine_id, validate_key, save_licence, is_activated
+    from licence_check import get_machine_id, activate, validate, is_activated
     HAS_LICENCE = True
 except ImportError:
     HAS_LICENCE = False
@@ -53,7 +54,7 @@ FIELD_KEYS = ("vendor", "vendor_num", "date", "vat", "phone", "cell",
 class AccountingScannerApp:
     def __init__(self, root):
         self.root = root
-        root.title("Receipts OCR Tool — Purple Cow Accounting")
+        root.title("Receipts OCR Tool - Purple Cow Accounting")
         root.geometry("1800x1000")
         root.withdraw()  # Hide main window until licence + TOS done
         
@@ -107,9 +108,16 @@ class AccountingScannerApp:
     def check_licence(self):
         """Block app startup if no valid licence is present."""
         if not HAS_LICENCE:
-            return  # licence_check.py missing — run without protection (dev mode)
+            messagebox.showerror(
+                "Application Error",
+                "A required application file is missing or damaged.\n\n"
+                "Please reinstall the application or contact Purple Cow Accounting.\n\n"
+                "OCR@purplecow.site  |  +27 608 888 812"
+            )
+            self.root.destroy()
+            sys.exit(1)
         if is_activated():
-            return  # Already licenced — carry on
+            return
         self._show_activation()
 
     def _show_activation(self):
@@ -202,34 +210,18 @@ class AccountingScannerApp:
             if not customer or not key:
                 status_lbl.config(text="Please enter both your name and licence key.")
                 return
-            
             try:
-                status_lbl.config(text="Saving licence...", fg="blue")
-                win.update()  # Refresh display
-                
-                # Save licence
-                save_licence(key, customer)
-                
                 status_lbl.config(text="Validating...", fg="blue")
-                win.update()  # Refresh display
-                
-                # Validate
-                ok, msg = validate_key(None)
-                
+                win.update()
+                # activate() validates first, only saves to disk if valid
+                ok, msg = activate(key, customer)
                 if ok:
-                    status_lbl.config(text=f"✓ Activated for {msg}!", fg="green")
+                    status_lbl.config(text=f"Activated for {msg}!", fg="green")
                     win.after(1200, win.destroy)
                 else:
-                    # Remove invalid licence file
-                    try:
-                        from licence_check import _licence_path
-                        lp = _licence_path()
-                        if os.path.exists(lp):
-                            os.remove(lp)
-                    except Exception:
-                        pass
                     status_lbl.config(
-                        text="Invalid key. Check your name and key match exactly.", fg="red")
+                        text="Invalid key. Check your name and key match exactly.",
+                        fg="red")
             except Exception as e:
                 status_lbl.config(text=f"Error: {str(e)}", fg="red")
 
@@ -239,7 +231,7 @@ class AccountingScannerApp:
 
         self.root.wait_window(win)
 
-        # After window closes, check if activated — if not, quit
+        # After window closes, check if activated - if not, quit
         if not is_activated():
             self.root.destroy()
             sys.exit(0)
@@ -275,7 +267,7 @@ class AccountingScannerApp:
         tos.focus_force()
         txt = tk.Text(tos, wrap=tk.WORD, bg="#f9f9f9", font=("Arial", 9))
         txt.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-        txt.insert("1.0", """RECEIPTS OCR PROGRAM — TERMS OF SERVICE
+        txt.insert("1.0", """RECEIPTS OCR PROGRAM - TERMS OF SERVICE
 
 1. ACCURACY DISCLAIMER
 OCR is not 100% accurate. You are responsible for verifying all extracted data.
@@ -348,26 +340,26 @@ Verify all data before use in financial records.""")
         # TOP SECTION
         topf = tk.Frame(self.left, bg="#f5f5f5")
         topf.pack(fill=tk.X, pady=4)
-        tk.Button(topf, text="📁 Open PDF/Image", command=self.load_file,
+        tk.Button(topf, text="- Open PDF/Image", command=self.load_file,
                   bg="#D4AF37", fg="#2D3142", font=("Arial", 9, "bold")).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
-        tk.Button(topf, text="🔄 Reset", command=self.reset,
+        tk.Button(topf, text="- Reset", command=self.reset,
                   bg="#6B2FA0", fg="white", font=("Arial", 9, "bold")).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
 
         # PAGE NAV
         pf = tk.Frame(self.left, bg="#f5f5f5")
         pf.pack(fill=tk.X, pady=3)
-        tk.Button(pf, text="◀ Page", command=self.prev_page, width=7).pack(side=tk.LEFT, padx=2)
+        tk.Button(pf, text="- Page", command=self.prev_page, width=7).pack(side=tk.LEFT, padx=2)
         self.page_lbl = tk.Label(pf, text="1/1", font=("Arial", 9), bg="#f5f5f5")
         self.page_lbl.pack(side=tk.LEFT, expand=True)
-        tk.Button(pf, text="Page ▶", command=self.next_page, width=7).pack(side=tk.LEFT, padx=2)
+        tk.Button(pf, text="Page -", command=self.next_page, width=7).pack(side=tk.LEFT, padx=2)
 
         # ZOOM
         zf = tk.LabelFrame(self.left, text="Zoom", bg="#f5f5f5", font=("Arial", 8))
         zf.pack(fill=tk.X, pady=2)
         zb = tk.Frame(zf, bg="#f5f5f5")
         zb.pack(pady=3)
-        tk.Button(zb, text="➕", width=4, command=lambda: self.adjust_zoom(0.2), font=("Arial", 10)).pack(side=tk.LEFT, padx=2)
-        tk.Button(zb, text="➖", width=4, command=lambda: self.adjust_zoom(-0.2), font=("Arial", 10)).pack(side=tk.LEFT, padx=2)
+        tk.Button(zb, text="-", width=4, command=lambda: self.adjust_zoom(0.2), font=("Arial", 10)).pack(side=tk.LEFT, padx=2)
+        tk.Button(zb, text="-", width=4, command=lambda: self.adjust_zoom(-0.2), font=("Arial", 10)).pack(side=tk.LEFT, padx=2)
         tk.Button(zb, text="Fit", width=4, command=self.zoom_fit, font=("Arial", 10)).pack(side=tk.LEFT, padx=2)
 
         # TABS
@@ -408,12 +400,12 @@ Verify all data before use in financial records.""")
         # BOTTOM BUTTONS
         exp_f = tk.Frame(self.left, bg="#f5f5f5")
         exp_f.pack(fill=tk.X, side=tk.BOTTOM, pady=3)
-        tk.Button(exp_f, text="💾 Create Backup", command=self.backup, bg="#6B2FA0", fg="white", font=("Arial", 9, "bold")).pack(fill=tk.X, pady=2)
-        tk.Button(exp_f, text="⚙️ Export to Excel", command=self.export_menu,
+        tk.Button(exp_f, text="- Create Backup", command=self.backup, bg="#6B2FA0", fg="white", font=("Arial", 9, "bold")).pack(fill=tk.X, pady=2)
+        tk.Button(exp_f, text="-- Export to Excel", command=self.export_menu,
                   bg="#D4AF37", fg="#2D3142", font=("Arial", 10, "bold")).pack(fill=tk.X, pady=2)
 
         # CANVAS
-        self.canvas_title = tk.Label(self.right, text="Canvas — Select regions by dragging", font=("Arial", 10, "bold"))
+        self.canvas_title = tk.Label(self.right, text="Canvas - Select regions by dragging", font=("Arial", 10, "bold"))
         self.canvas_title.pack(pady=4)
         cw = tk.Frame(self.right)
         cw.pack(fill=tk.BOTH, expand=True)
@@ -453,12 +445,12 @@ Verify all data before use in financial records.""")
         self.orient_var = tk.StringVar(value=st["orientation"])
         ob = tk.Frame(of, bg="#f5f5f5")
         ob.pack(fill=tk.X, padx=4)
-        for t, v in [("↑ South", "South"), ("↓ North", "North"), ("← West", "West"), ("→ East", "East")]:
+        for t, v in [("- South", "South"), ("- North", "North"), ("- West", "West"), ("- East", "East")]:
             tk.Radiobutton(ob, text=t, variable=self.orient_var, value=v, bg="#f5f5f5", font=("Arial", 9),
                            command=lambda s=st: s.update({"orientation": self.orient_var.get()})).pack(side=tk.LEFT, expand=True)
 
         # FIELDS
-        ff = tk.LabelFrame(self.controls, text="Metadata (🎯 = Click to OCR)", bg="#f5f5f5", font=("Arial", 9, "bold"))
+        ff = tk.LabelFrame(self.controls, text="Metadata (- = Click to OCR)", bg="#f5f5f5", font=("Arial", 9, "bold"))
         ff.pack(fill=tk.X, pady=4, padx=4)
         self.entries = {}
         self.fbtns = {}
@@ -478,7 +470,7 @@ Verify all data before use in financial records.""")
                 w.insert(0, st["fields"][key])
             w.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4)
             self.entries[key] = w
-            btn = tk.Button(r, text="🎯", width=2, font=("Arial", 9),
+            btn = tk.Button(r, text="-", width=2, font=("Arial", 9),
                             command=lambda k=key: self.target(k), bg="#e0e0e0")
             btn.pack(side=tk.LEFT, padx=2)
             self.fbtns[key] = btn
@@ -489,7 +481,7 @@ Verify all data before use in financial records.""")
                   bg="#4CAF50", fg="white", font=("Arial", 9)).pack(fill=tk.X, pady=3, padx=4)
 
         # TRANSACTIONS
-        tf = tk.LabelFrame(self.controls, text="Transaction Lines (Double-click cell to edit | 🎯 for OCR)", bg="#f5f5f5", font=("Arial", 9, "bold"))
+        tf = tk.LabelFrame(self.controls, text="Transaction Lines (Double-click cell to edit | - for OCR)", bg="#f5f5f5", font=("Arial", 9, "bold"))
         tf.pack(fill=tk.X, pady=4, padx=4)
         
         self.tree = ttk.Treeview(tf, columns=GRID_COLS, show="headings", height=5)
@@ -519,14 +511,14 @@ Verify all data before use in financial records.""")
         # ROW BUTTONS
         rb = tk.Frame(tf, bg="#f5f5f5")
         rb.pack(fill=tk.X, padx=4, pady=3)
-        tk.Button(rb, text="＋ Add Row", command=self.add_row, font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
-        tk.Button(rb, text="✖ Delete Row", command=self.del_row, font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        tk.Button(rb, text="- Add Row", command=self.add_row, font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        tk.Button(rb, text="- Delete Row", command=self.del_row, font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
 
         # NAV
         nf = tk.Frame(self.controls, bg="#f5f5f5")
         nf.pack(fill=tk.X, padx=4, pady=4)
-        tk.Button(nf, text="◀ Previous Document", command=lambda: self.shift("prev"), font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
-        tk.Button(nf, text="Next Document ▶", command=lambda: self.shift("next"), font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        tk.Button(nf, text="- Previous Document", command=lambda: self.shift("prev"), font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
+        tk.Button(nf, text="Next Document -", command=lambda: self.shift("next"), font=("Arial", 9)).pack(side=tk.LEFT, expand=True, fill=tk.X, padx=2)
         self._setup_field_navigation()  # Enable keyboard navigation
 
 
@@ -625,7 +617,7 @@ Verify all data before use in financial records.""")
             self.canvas_title.config(text=f">>> Draw box for [{col_key}] - Release to OCR <<<")
         
         tk.Button(btn_frame, text="Save", command=save_value, bg="#4CAF50", fg="white", width=10).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, text="OCR 🎯", command=ocr_value, bg="#2196F3", fg="white", width=10).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="OCR -", command=ocr_value, bg="#2196F3", fg="white", width=10).pack(side=tk.LEFT, padx=5)
         tk.Button(btn_frame, text="Cancel", command=popup.destroy, bg="#f44336", fg="white", width=10).pack(side=tk.LEFT, padx=5)
 
     def update_totals(self):
@@ -969,7 +961,7 @@ Verify all data before use in financial records.""")
         entry.bind("<Return>", lambda e: save_and_move_right())
         
         tk.Button(btn_frame, text="Save", command=save_value, bg="#4CAF50", fg="white", width=10).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, text="OCR 🎯", command=lambda: self._ocr_from_popup(item, col_key, entry, popup), bg="#2196F3", fg="white", width=10).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="OCR -", command=lambda: self._ocr_from_popup(item, col_key, entry, popup), bg="#2196F3", fg="white", width=10).pack(side=tk.LEFT, padx=5)
         tk.Button(btn_frame, text="Cancel", command=popup.destroy, bg="#f44336", fg="white", width=10).pack(side=tk.LEFT, padx=5)
     
     def _ocr_from_popup(self, item, col_key, entry, popup):
@@ -1137,7 +1129,7 @@ Verify all data before use in financial records.""")
             df.to_excel(EXCEL_FILE, index=False)
             row_count = len(out)
             messagebox.showinfo(
-                "✓ Export Complete",
+                "- Export Complete",
                 f"Exported {row_count} row{'s' if row_count != 1 else ''} "
                 f"from {scope_label}.\n\nSaved to:\n{os.path.abspath(EXCEL_FILE)}")
         except PermissionError:
@@ -1151,7 +1143,12 @@ Verify all data before use in financial records.""")
     def show_licence_status(self):
         """Display current licence status and information."""
         if not HAS_LICENCE:
-            messagebox.showinfo("Licence Status", "Licence system not available (dev mode)")
+            messagebox.showerror(
+                "Application Error",
+                "A required application file is missing or damaged.\n\n"
+                "Please reinstall the application or contact Purple Cow Accounting.\n\n"
+                "OCR@purplecow.site  |  +27 608 888 812"
+            )
             return
         
         status_window = tk.Toplevel(self.root)
@@ -1182,7 +1179,7 @@ Verify all data before use in financial records.""")
         
         # Check if activated
         if is_activated():
-            status_label = tk.Label(content, text="✓ ACTIVATED", font=("Arial", 12, "bold"),
+            status_label = tk.Label(content, text="- ACTIVATED", font=("Arial", 12, "bold"),
                                    fg="#4CAF50")
             status_label.pack(pady=10)
             
@@ -1213,7 +1210,7 @@ Verify all data before use in financial records.""")
                 tk.Label(content, text=f"Error reading licence: {str(e)}",
                         font=("Arial", 9), fg="#f44336").pack()
         else:
-            status_label = tk.Label(content, text="✗ NOT ACTIVATED", font=("Arial", 12, "bold"),
+            status_label = tk.Label(content, text="- NOT ACTIVATED", font=("Arial", 12, "bold"),
                                    fg="#f44336")
             status_label.pack(pady=10)
             
@@ -1230,7 +1227,12 @@ Verify all data before use in financial records.""")
     def check_licence_menu(self):
         """Safe licence check from menu - shows status with option to change key."""
         if not HAS_LICENCE:
-            messagebox.showinfo("Check Licence", "Licence system not available (dev mode)")
+            messagebox.showerror(
+                "Application Error",
+                "A required application file is missing or damaged.\n\n"
+                "Please reinstall the application or contact Purple Cow Accounting.\n\n"
+                "OCR@purplecow.site  |  +27 608 888 812"
+            )
             return
         
         if not is_activated():
@@ -1272,7 +1274,7 @@ Verify all data before use in financial records.""")
                 lic_data = json.load(f)
             customer = lic_data.get('customer', 'Unknown')
             
-            tk.Label(content, text="✓ Activated", font=("Arial", 12, "bold"),
+            tk.Label(content, text="- Activated", font=("Arial", 12, "bold"),
                     fg="#4CAF50").pack(pady=10)
             tk.Label(content, text=f"Customer: {customer}", font=("Arial", 10),
                     fg="#2D3142").pack(pady=5)
@@ -1283,7 +1285,7 @@ Verify all data before use in financial records.""")
         except Exception as e:
             tk.Label(content, text="Licence Info", font=("Arial", 10, "bold"),
                     fg="#2D3142").pack(pady=5)
-            tk.Label(content, text="✓ Activated and running",
+            tk.Label(content, text="- Activated and running",
                     font=("Arial", 10), fg="#4CAF50").pack(pady=10)
         
         # Buttons
@@ -1323,7 +1325,7 @@ Verify all data before use in financial records.""")
         
         tk.Label(header, text="Receipts OCR Tool", font=("Arial", 14, "bold"),
                  fg="white", bg="#6B2FA0").pack(pady=(8, 2))
-        tk.Label(header, text="v1.0 — by Purple Cow Accounting",
+        tk.Label(header, text="v1.0 - by Purple Cow Accounting",
                  font=("Arial", 9), fg="#D4AF37", bg="#6B2FA0").pack(pady=(0, 8))
         
         # Content
@@ -1345,9 +1347,9 @@ Verify all data before use in financial records.""")
                  font=("Arial", 9, "bold"), fg="#2D3142").pack(anchor=tk.W)
         
         services = [
-            "• AI Integration Training & Setup",
-            "• Workflow Automation Consulting",
-            "• Custom Agentic Solutions"
+            "- AI Integration Training & Setup",
+            "- Workflow Automation Consulting",
+            "- Custom Agentic Solutions"
         ]
         for service in services:
             tk.Label(content, text=service, font=("Arial", 9), fg="#555",
