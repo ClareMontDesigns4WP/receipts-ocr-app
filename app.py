@@ -117,7 +117,7 @@ class AccountingScannerApp:
             self.root.destroy()
             sys.exit(1)
         if is_activated():
-            return
+            return  # Already licenced - carry on
         self._show_activation()
 
     def _show_activation(self):
@@ -213,18 +213,16 @@ class AccountingScannerApp:
             try:
                 status_lbl.config(text="Validating...", fg="blue")
                 win.update()
-                # activate() validates first, only saves to disk if valid
                 ok, msg = activate(key, customer)
                 if ok:
-                    status_lbl.config(text=f"Activated for {msg}!", fg="green")
+                    status_lbl.config(text="Activated for " + msg + "!", fg="green")
                     win.after(1200, win.destroy)
                 else:
                     status_lbl.config(
                         text="Invalid key. Check your name and key match exactly.",
                         fg="red")
             except Exception as e:
-                status_lbl.config(text=f"Error: {str(e)}", fg="red")
-
+                status_lbl.config(text="Error: " + str(e), fg="red")
         tk.Button(win, text="Activate", command=try_activate,
                   bg="#6B2FA0", fg="white", font=("Arial", 10, "bold"),
                   width=20).pack(pady=(4, 0))
